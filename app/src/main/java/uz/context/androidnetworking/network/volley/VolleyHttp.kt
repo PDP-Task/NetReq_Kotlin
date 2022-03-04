@@ -12,7 +12,7 @@ class VolleyHttp {
         val TAG = VolleyHttp::class.java.simpleName
         val IS_TESTER = true
         val SERVER_DEVELOPMENT = "https://jsonplaceholder.typicode.com/"
-        val SERVER_PRODUCTION = "https://jsonplaceholder.typicode.com/"
+        val SERVER_PRODUCTION = "https://62219d27afd560ea69b4e2c3.mockapi.io/api/"
 
         fun server(url: String): String {
             if (IS_TESTER)

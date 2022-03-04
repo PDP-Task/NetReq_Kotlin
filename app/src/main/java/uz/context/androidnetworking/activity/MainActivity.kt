@@ -2,14 +2,23 @@ package uz.context.androidnetworking.activity
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
+import androidx.core.view.isVisible
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.gson.Gson
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
 import uz.context.androidnetworking.util.Logger
 import uz.context.androidnetworking.R
+import uz.context.androidnetworking.adapter.PosterAdapter
 import uz.context.androidnetworking.model.Poster
 import uz.context.androidnetworking.model.PosterResp
 import uz.context.androidnetworking.network.volley.VolleyHandler
@@ -17,6 +26,11 @@ import uz.context.androidnetworking.network.volley.VolleyHttp
 import uz.context.androidnetworking.retrofit.RetrofitHttp
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var btnFloating: FloatingActionButton
+    private lateinit var progressBar: ProgressBar
+    private lateinit var posterAdapter: PosterAdapter
+    private val posters = ArrayList<Poster>()
     private lateinit var textView: TextView
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,8 +41,63 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
-        textView = findViewById(R.id.textView)
-        updatePost()
+        recyclerView = findViewById(R.id.recyclerView)
+        btnFloating = findViewById(R.id.btn_floating)
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        progressBar = findViewById(R.id.progressBar)
+        progressBar.isVisible = true
+        apiPosterList()
+    }
+
+    private fun apiPosterList() {
+        VolleyHttp.get(VolleyHttp.API_LIST_POST, VolleyHttp.paramsEmpty(), object : VolleyHandler {
+            override fun onSuccess(response: String?) {
+                val posterArray = Gson().fromJson(response, Array<Poster>::class.java)
+                posters.addAll(posterArray)
+
+                progressBar.isVisible = false
+                refreshAdapter(posters)
+            }
+
+            override fun onError(error: String?) {
+                progressBar.isVisible = true
+                Log.d("@@@", error!!)
+            }
+        })
+    }
+
+
+    private fun refreshAdapter(posters: ArrayList<Poster>) {
+        posterAdapter = PosterAdapter(this, posters)
+        recyclerView.adapter = posterAdapter
+    }
+
+    fun dialogPoster(poster: Poster?) {
+        AlertDialog.Builder(this)
+            .setTitle("Delete User")
+            .setMessage("Are you sure you want to delete this poster?")
+            .setPositiveButton(
+                android.R.string.yes
+            ) { dialog, which -> apiPosterDelete(poster!!)
+//                Handler(Looper.getMainLooper()).postDelayed({
+//                    progressBar.isVisible = true
+//                },1000)
+            }
+            .setNegativeButton(android.R.string.no, null)
+            .setIcon(android.R.drawable.ic_dialog_alert)
+            .show()
+    }
+
+    private fun apiPosterDelete(poster: Poster) {
+        VolleyHttp.del(VolleyHttp.API_DELETE_POST + poster.id, object : VolleyHandler {
+            override fun onSuccess(response: String?) {
+                apiPosterList()
+            }
+
+            override fun onError(error: String?) {
+                Log.d("@@@", error!!)
+            }
+        })
     }
 
     private fun workWithRetrofit() {
@@ -80,7 +149,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun deletePost() {
         val post = Poster(1, 1, "Pdp", "Online")
-        RetrofitHttp.posterService.deletePost(post.id).enqueue(object: Callback<PosterResp> {
+        RetrofitHttp.posterService.deletePost(post.id).enqueue(object : Callback<PosterResp> {
             override fun onResponse(call: Call<PosterResp>, response: Response<PosterResp>) {
                 Log.d("@@@", response.body().toString())
                 textView.text = response.body().toString()
